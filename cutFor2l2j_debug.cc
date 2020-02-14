@@ -195,8 +195,8 @@ bool cut::initialize(){
 bool cut::execute(){
 	for(int i=0;i<data->GetEntries();i++){
 		data->GetEntry(i);
-		hCut->AddBinContent(1);
 		if(!preSelectionCut()) continue;
+		hCut->AddBinContent(1);	
 		if(!lepNumberCut()) continue;
 		hCut->AddBinContent(2);
 		if(!jetNumberCut()) continue;
@@ -281,7 +281,11 @@ bool cut::preSelectionCut(){
 
 bool cut::lepNumberCut(){
 	int nloose=0,ntight=0;
-	if(lep_p4->size()!=2) return false;
+	if(nLlep!=2) return false;
+	if(nVlep!=2) return false;
+	if(lep_p4->at(0).pt()<25) return false;
+	if(lep_p4->at(1).pt()<25) return false;
+	if(!((getRawMVA(fabs(lep_MVA->at(0))) > 7) && (getRawMVA(fabs(lep_MVA->at(1))) > 7))) return false;
 	for(int i=0;i<lep_p4->size();i++){
 		if(!(fabs(lep_p4->at(i).Eta())<2.5||lep_p4->at(i).pt()>25)) return false;
 		if(lep_Iso->at(i)<0.05&&lep_pass_VVV_fo->at(i)) ntight++;
@@ -289,7 +293,6 @@ bool cut::lepNumberCut(){
 	}
 	if(nVlep==2&&nTlep==2){
 		if(!(ntight==2 && nloose==2 && lep_pdgId->at(0)*lep_pdgId->at(1)>0)) return false;
-		if(!((getRawMVA(fabs(lep_MVA->at(0))) > 7) && (getRawMVA(fabs(lep_MVA->at(1))) > 7))) return false;
 		return true;
 	}
 	return false;
