@@ -21,7 +21,7 @@ class cut{
 	int nTlep;
 	int nLlep;
 	vector<float> *lep_MVA;
-	vector<float> *lep_pass_VVV_fo;
+	vector<int> *lep_pass_VVV_fo;
 	vector<float> *lep_Iso;
 	vector<int> *lep_pdgId;
 	vector<LorentzVector> *jet_p4;
@@ -135,7 +135,7 @@ bool cut::initialize(){
 	data->SetBranchAddress("lep_MVA",&lep_MVA);
 	data->SetBranchAddress("evt_scale1fb",&evt_scale1fb);
 	data->SetBranchAddress("lep_pdgId",&lep_pdgId);
-	data->SetBranchAddress("lep_relIso03EAv2Lep",&lep_Iso);
+	data->SetBranchAddress("lep_relIso03EALep",&lep_Iso);
         data->SetBranchAddress("jets_p4",&jet_p4);
 	data->SetBranchAddress("lep_p4",&lep_p4);
         data->SetBranchAddress("nb",&nb);
@@ -280,22 +280,21 @@ bool cut::preSelectionCut(){
 }
 
 bool cut::lepNumberCut(){
+	
 	int nloose=0,ntight=0;
+	
 	if(nLlep!=2) return false;
 	if(nVlep!=2) return false;
 	if(lep_p4->at(0).pt()<25) return false;
 	if(lep_p4->at(1).pt()<25) return false;
 	if(!((getRawMVA(fabs(lep_MVA->at(0))) > 7) && (getRawMVA(fabs(lep_MVA->at(1))) > 7))) return false;
 	for(int i=0;i<lep_p4->size();i++){
-		if(!(fabs(lep_p4->at(i).Eta())<2.5||lep_p4->at(i).pt()>25)) return false;
 		if(lep_Iso->at(i)<0.05&&lep_pass_VVV_fo->at(i)) ntight++;
 		if(lep_Iso->at(i)<0.40&&lep_pass_VVV_fo->at(i)) nloose++;
 	}
-	if(nVlep==2&&nTlep==2){
-		if(!(ntight==2 && nloose==2 && lep_pdgId->at(0)*lep_pdgId->at(1)>0)) return false;
-		return true;
-	}
+	if(ntight==2 && nloose==2) return true;
 	return false;
+	
 }
 
 bool cut::jetNumberCut(){
