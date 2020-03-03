@@ -16,8 +16,14 @@ class cut{
 	vector<float>* svs_anglePV;
 	vector<float>* svs_distXYval;
 	vector<float>* svs_dist3Dsig;
+
+	int isData;
+	int run;
+	int evt;
 	float purewgt;
 	int nVert;
+	float evt_scale1fb;
+
 	
 	int nVlep;
 	int nLlep;
@@ -47,10 +53,11 @@ class cut{
 	/*other variables*/
         TH1F *hCut;//histogram for number of events pass every cut	
 	bool is2jet;
-	vector<int> nSS,n3l;
-	
+	vector<long long> checkDuplicates;
+	vector<int> nSS,n3l;	
 	/*fucntion for cuts applied on data*/
 	bool preSelectionCut();
+	bool DuplicateCut();
 	bool lepNumberCut();
 	bool jetNumberCut();
 	bool isoTrackCut();
@@ -83,7 +90,7 @@ cut::~cut(){
 bool cut::initialize() {
 	/*initialize the data for cut*/
 	data=new TChain("t_ss");
-	data->Add("/home/yulunmiao/Documents/CMS_data/WZ/mc/wz_3lv_amcatnlo_1.root");
+	data->Add("/home/yulunmiao/Documents/CMS_data/WZ/data/*");
 	/*initialize the variable read from data*/
 	svs_nTrks=0;
         svs_anglePV=0;
@@ -96,7 +103,13 @@ bool cut::initialize() {
 	lep_p4=0;
 	lep_Iso=0;
 	lep_MVA=0;
-	        data->SetBranchAddress("purewgt",&purewgt);
+
+	data->SetBranchAddress("isData",&isData);
+	data->SetBranchAddress("evt",&evt);
+	data->SetBranchAddress("run",&run);
+
+	data->SetBranchAddress("evt_scale1fb",&evt_scale1fb);
+	data->SetBranchAddress("purewgt",&purewgt);
         data->SetBranchAddress("nVert",&nVert);
 
         data->SetBranchAddress("firstgoodvertex",&firstgoodvertex);
@@ -128,16 +141,18 @@ bool cut::initialize() {
         data->SetBranchAddress("met_pt",&met_pt);
         data->SetBranchAddress("MTmax",&MTmax);
         /*initialize the file to store tree*/
-        f=TFile::Open("result1.root","recreate");
+        f=TFile::Open("data_result.root","recreate");
         /*initialize the tree to store data*/
         tr=new TTree("result","result");
         /*initialize the variables saved in tree*/
 
         tr->Branch("purewgt",&purewgt,"purewgt/F");
         tr->Branch("nVert",&nVert,"nVert/I");
+	tr->Branch("scale",&evt_scale1fb,"scale/F");
 
         /*initial other variables*/
         hCut=new TH1F("hCut","hCut",12,0,12);
+	checkDuplicates.clear();
 	return true;
 }
 
@@ -148,6 +163,7 @@ bool cut::execute(){
 		if((i+1)%1000==0) cout<<(i+1)<<"/"<<total<<endl;
 		data->GetEntry(i);
 		if(!preSelectionCut()) continue;
+		if(!DuplicateCut()) continue;
 		hCut->AddBinContent(1);	
 		if(!lepNumberCut()) continue;
 		hCut->AddBinContent(2);
@@ -163,14 +179,6 @@ bool cut::execute(){
 		hCut->AddBinContent(7);
 		if(!pTmissCut()) continue;
 		hCut->AddBinContent(8);
-                if(!mjjLCut()) continue;
-                hCut->AddBinContent(9);
-                if(!DetajjLCut()) continue;
-                hCut->AddBinContent(10);
-		if(!DRljminCut()) continue;
-		hCut->AddBinContent(11);
-                if(!mTmaxCut()) continue;
-                hCut->AddBinContent(12);
 		storeInfo();
 	}
 	return true;
@@ -204,6 +212,18 @@ bool cut::preSelectionCut(){
         presel &= (nVlep                >= 2);
         presel &= (nLlep                >= 2);
 	return presel;
+}
+
+bool cut::DuplicateCut(){
+	long long RUNPREF=1000*1000;
+	long long dupCheck = run*RUNPREF + evt;
+        for (unsigned int uid = 0; uid < checkDuplicates.size(); uid++){
+        	if (checkDuplicates[uid] == dupCheck){
+			return false;
+		}
+	}
+	checkDuplicates.push_back(dupCheck);
+	return true;
 }
 
 bool cut::lepNumberCut(){
